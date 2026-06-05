@@ -1,25 +1,64 @@
 {
   "expo": {
-    "name": "evx",
-    "slug": "evx",
+    "name": "EVX",
+    "slug": "evx-health-coach",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0A0A0F"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.evx.healthcoach",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "EVX needs camera access to capture lab report images.",
+        "NSPhotoLibraryUsageDescription": "EVX needs photo library access to upload lab reports.",
+        "NSHealthShareUsageDescription": "EVX can optionally read health data to enhance your coaching.",
+        "NSHealthUpdateUsageDescription": "EVX can write fitness data to HealthKit."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#0A0A0F"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.evx.healthcoach",
+      "versionCode": 1,
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA",
+        "INTERNET"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "EVX needs access to your photos to upload lab reports.",
+          "cameraPermission": "EVX needs camera access to capture lab reports."
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "evx-health-coach"
+      }
     }
   }
 }
