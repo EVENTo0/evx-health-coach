@@ -287,3 +287,42 @@ CREATE TRIGGER update_health_profiles_updated_at
 CREATE TRIGGER update_goals_updated_at
   BEFORE UPDATE ON goals
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+
+-- ================================================================
+-- STREAKS & GAMIFICATION (Phase 2)
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS streaks (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  current_streak     INT NOT NULL DEFAULT 0,
+  longest_streak     INT NOT NULL DEFAULT 0,
+  last_active_date   DATE,
+  total_active_days  INT NOT NULL DEFAULT 0,
+  xp_total           INT NOT NULL DEFAULT 0,
+  badges             JSONB NOT NULL DEFAULT '[]',
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id)
+);
+
+ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own streak" ON streaks
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Push notification tokens
+CREATE TABLE IF NOT EXISTS push_tokens (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  token      TEXT NOT NULL,
+  platform   TEXT NOT NULL, -- 'ios' | 'android'
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, token)
+);
+
+ALTER TABLE push_tokens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own tokens" ON push_tokens
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
