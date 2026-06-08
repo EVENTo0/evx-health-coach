@@ -1,14 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
-
-import { useTheme } from '../hooks/useTheme';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, SafeAreaView } from 'react-native';
 import { useAppStore } from '../store';
-import { supabase } from '../services/supabase';
-import { healthProfileService } from '../services/supabase';
+import { useTheme } from '../hooks/useTheme';
 
 // Screens
 import { SplashScreen } from '../screens/SplashScreen';
@@ -21,124 +14,168 @@ import { LabScreen } from '../screens/LabScreen';
 import { DailyPlanScreen } from '../screens/DailyPlanScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { EducationScreen } from '../screens/EducationScreen';
+import { ArticleDetailScreen } from '../screens/ArticleDetailScreen';
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+type Tab = 'Dashboard' | 'Workout' | 'Nutrition' | 'Learn' | 'More';
+type MoreScreen = 'Lab' | 'DailyPlan' | 'Progress' | 'Settings';
 
-const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
-  Dashboard: { active: '🏠', inactive: '🏠' },
-  Workouts: { active: '🏋️', inactive: '🏋️' },
-  Nutrition: { active: '🥗', inactive: '🥗' },
-  Labs: { active: '🔬', inactive: '🔬' },
-  DailyPlan: { active: '📋', inactive: '📋' },
-  Progress: { active: '📈', inactive: '📈' },
-  Settings: { active: '⚙️', inactive: '⚙️' },
-};
+const TAB_CONFIG: { key: Tab; emoji: string; label: string }[] = [
+  { key: 'Dashboard', emoji: '🏠', label: 'Home' },
+  { key: 'Workout',   emoji: '💪', label: 'Train' },
+  { key: 'Nutrition', emoji: '🥗', label: 'Eat' },
+  { key: 'Learn',     emoji: '📚', label: 'Learn' },
+  { key: 'More',      emoji: '⚡', label: 'More' },
+];
 
-const MainTabs = () => {
-  const { colors, fontSize } = useTheme();
-
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 80,
-          paddingBottom: 12,
-          paddingTop: 8,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarLabelStyle: { fontSize: fontSize.xs, fontWeight: '600' },
-        tabBarIcon: ({ focused }) => (
-          <Text style={{ fontSize: 20 }}>
-            {focused ? TAB_ICONS[route.name]?.active : TAB_ICONS[route.name]?.inactive}
-          </Text>
-        ),
-      })}
-    >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Workouts" component={WorkoutScreen} options={{ title: 'Fit' }} />
-      <Tab.Screen name="Nutrition" component={NutritionScreen} options={{ title: 'Nutrition' }} />
-      <Tab.Screen name="DailyPlan" component={DailyPlanScreen} options={{ title: 'Coach' }} />
-      <Tab.Screen name="Labs" component={LabScreen} options={{ title: 'Lab' }} />
-      <Tab.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progress' }} />
-      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-    </Tab.Navigator>
-  );
-};
-
-export const AppNavigator = () => {
+export const AppNavigator: React.FC = () => {
+  const { user } = useAppStore();
   const { colors } = useTheme();
-  const { user, healthProfile, setUser, setHealthProfile } = useAppStore();
-  const [appState, setAppState] = useState<'splash' | 'auth' | 'onboarding' | 'main'>('splash');
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasOnboarded, setHasOnboarded] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('Dashboard');
+  const [moreScreen, setMoreScreen] = useState<MoreScreen | null>(null);
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          full_name: session.user.user_metadata?.full_name,
-          created_at: session.user.created_at,
-        });
-        const profile = await healthProfileService.get(session.user.id);
-        setHealthProfile(profile);
-        setAppState(profile?.onboarding_completed ? 'main' : 'onboarding');
-      } else {
-        setUser(null);
-        setHealthProfile(null);
-        if (appState !== 'splash') setAppState('auth');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (appState === 'splash') {
-    return (
-      <SplashScreen onFinish={() => setAppState(user ? (healthProfile?.onboarding_completed ? 'main' : 'onboarding') : 'auth')} />
-    );
+  // Splash
+  if (isLoading) {
+    return <SplashScreen onFinish={() => setIsLoading(false)} />;
   }
 
+  // Auth
+  if (!user) return <LoginScreen />;
+
+  // Onboarding
+  if (!hasOnboarded) {
+    return <OnboardingScreen onComplete={() => setHasOnboarded(true)} />;
+  }
+
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    content: { flex: 1 },
+    tabBar: {
+      flexDirection: 'row',
+      backgroundColor: colors.card,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+      paddingTop: 8,
+    },
+    tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
+    tabEmoji: { fontSize: 20 },
+    tabLabel: { fontSize: 10, fontWeight: '600' },
+    moreMenu: {
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: colors.background, zIndex: 10,
+    },
+    moreHeader: {
+      flexDirection: 'row', alignItems: 'center', padding: 20,
+      borderBottomWidth: 1, borderBottomColor: colors.border,
+    },
+    moreTitle: { fontSize: 22, fontWeight: '800', color: colors.text, flex: 1 },
+    moreGrid: { padding: 20, gap: 12 },
+    moreCard: {
+      backgroundColor: colors.card, borderRadius: 16, padding: 20,
+      flexDirection: 'row', alignItems: 'center', gap: 16,
+    },
+    moreCardEmoji: { fontSize: 28 },
+    moreCardLabel: { fontSize: 16, fontWeight: '700', color: colors.text },
+    moreCardSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  });
+
+  const MORE_ITEMS: { screen: MoreScreen; emoji: string; label: string; sub: string }[] = [
+    { screen: 'Lab',       emoji: '🧬', label: 'Lab Reports',   sub: 'Upload & analyze your results' },
+    { screen: 'DailyPlan', emoji: '📋', label: 'Daily Plan',    sub: 'Your AI-generated daily schedule' },
+    { screen: 'Progress',  emoji: '📊', label: 'Progress',      sub: 'Track your transformation' },
+    { screen: 'Settings',  emoji: '⚙️', label: 'Settings',      sub: 'Notifications, theme & account' },
+  ];
+
+  const renderContent = () => {
+    // Article detail (inside Learn tab)
+    if (activeTab === 'Learn' && selectedArticleId) {
+      return (
+        <ArticleDetailScreen
+          articleId={selectedArticleId}
+          onBack={() => setSelectedArticleId(null)}
+        />
+      );
+    }
+
+    // More sub-screens
+    if (activeTab === 'More' && moreScreen) {
+      const screenMap: Record<MoreScreen, React.ReactElement> = {
+        Lab:       <LabScreen />,
+        DailyPlan: <DailyPlanScreen />,
+        Progress:  <ProgressScreen />,
+        Settings:  <SettingsScreen />,
+      };
+      return (
+        <View style={styles.moreMenu}>
+          <View style={styles.moreHeader}>
+            <TouchableOpacity onPress={() => setMoreScreen(null)}>
+              <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600', marginRight: 16 }}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.moreTitle}>{moreScreen}</Text>
+          </View>
+          <View style={{ flex: 1 }}>{screenMap[moreScreen]}</View>
+        </View>
+      );
+    }
+
+    switch (activeTab) {
+      case 'Dashboard': return <DashboardScreen />;
+      case 'Workout':   return <WorkoutScreen />;
+      case 'Nutrition': return <NutritionScreen />;
+      case 'Learn':     return <EducationScreen onSelectArticle={a => setSelectedArticleId(a.id)} />;
+      case 'More':
+        return (
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <Text style={[styles.moreTitle, { margin: 20 }]}>More ⚡</Text>
+            <View style={styles.moreGrid}>
+              {MORE_ITEMS.map(item => (
+                <TouchableOpacity
+                  key={item.screen}
+                  style={styles.moreCard}
+                  onPress={() => setMoreScreen(item.screen)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.moreCardEmoji}>{item.emoji}</Text>
+                  <View>
+                    <Text style={styles.moreCardLabel}>{item.label}</Text>
+                    <Text style={styles.moreCardSub}>{item.sub}</Text>
+                  </View>
+                  <Text style={{ marginLeft: 'auto', color: colors.textSecondary, fontSize: 18 }}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        );
+      default: return <DashboardScreen />;
+    }
+  };
+
   return (
-    <NavigationContainer
-      theme={{
-        dark: true,
-        colors: {
-          primary: colors.primary,
-          background: colors.bg,
-          card: colors.surface,
-          text: colors.text,
-          border: colors.border,
-          notification: colors.accent,
-        },
-        fonts: {
-          regular: { fontFamily: 'System', fontWeight: '400' },
-          medium: { fontFamily: 'System', fontWeight: '500' },
-          bold: { fontFamily: 'System', fontWeight: '700' },
-          heavy: { fontFamily: 'System', fontWeight: '800' },
-        },
-      }}
-    >
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {appState === 'auth' && (
-          <Stack.Screen name="Login">
-            {(props) => <LoginScreen {...props} onAuthenticated={() => setAppState(healthProfile?.onboarding_completed ? 'main' : 'onboarding')} />}
-          </Stack.Screen>
-        )}
-        {appState === 'onboarding' && (
-          <Stack.Screen name="Onboarding">
-            {(props) => <OnboardingScreen {...props} onComplete={() => setAppState('main')} />}
-          </Stack.Screen>
-        )}
-        {appState === 'main' && (
-          <Stack.Screen name="Main" component={MainTabs} />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={styles.container}>
+      <View style={styles.content}>{renderContent()}</View>
+      <View style={styles.tabBar}>
+        {TAB_CONFIG.map(tab => {
+          const isActive = activeTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={styles.tabItem}
+              onPress={() => { setActiveTab(tab.key); setMoreScreen(null); setSelectedArticleId(null); }}
+            >
+              <Text style={[styles.tabEmoji, { opacity: isActive ? 1 : 0.45 }]}>{tab.emoji}</Text>
+              <Text style={[styles.tabLabel, { color: isActive ? colors.primary : colors.textSecondary }]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
   );
 };
+
+export default AppNavigator;

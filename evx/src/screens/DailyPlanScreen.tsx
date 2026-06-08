@@ -11,7 +11,7 @@ import { EVXButton } from '../components/EVXButton';
 import { EVXLoader } from '../components/EVXLoader';
 import type { DailyPlan, TimelineItem } from '../types';
 
-interface Props { navigation: any; }
+interface Props { navigation?: any; }
 
 const ACTIVITY_ICONS: Record<string, string> = {
   sleep: '😴',

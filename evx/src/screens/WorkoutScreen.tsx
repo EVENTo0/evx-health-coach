@@ -11,7 +11,7 @@ import { EVXButton } from '../components/EVXButton';
 import { EVXLoader } from '../components/EVXLoader';
 import type { WorkoutPlan } from '../types';
 
-interface Props { navigation: any; }
+interface Props { navigation?: any; }
 
 export const WorkoutScreen: React.FC<Props> = ({ navigation }) => {
   const { colors, spacing, fontSize, radius } = useTheme();

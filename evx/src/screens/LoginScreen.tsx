@@ -9,7 +9,7 @@ import { EVXButton } from '../components/EVXButton';
 import { EVXInput } from '../components/EVXInput';
 
 interface Props {
-  onAuthenticated: () => void;
+  onAuthenticated?: () => void;
 }
 
 type Mode = 'login' | 'signup' | 'forgot';
@@ -38,7 +38,7 @@ export const LoginScreen: React.FC<Props> = ({ onAuthenticated }) => {
     try {
       if (mode === 'login') {
         await authService.signIn(email, password);
-        onAuthenticated();
+        onAuthenticated?.();
       } else if (mode === 'signup') {
         await authService.signUp(email, password, fullName);
         Alert.alert('Welcome to EVX!', 'Check your email to verify your account, then sign in.');
