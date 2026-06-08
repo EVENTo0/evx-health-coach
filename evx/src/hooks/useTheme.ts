@@ -12,6 +12,7 @@ export const useTheme = () => {
     toggleTheme,
     colors: {
       ...c,
+      background: c.bg,   // alias so screens can use colors.background
       primary: Colors.primary,
       primaryDark: Colors.primaryDark,
       primaryLight: Colors.primaryLight,

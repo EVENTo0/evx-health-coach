@@ -1,142 +1,204 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert,
+  View, Text, ScrollView, Switch, TouchableOpacity,
+  StyleSheet, Alert, Platform
 } from 'react-native';
-import { useTheme } from '../hooks/useTheme';
 import { useAppStore } from '../store';
-import { authService } from '../services/supabase';
+import { useTheme } from '../hooks/useTheme';
 import { EVXCard } from '../components/EVXCard';
+import { EVXButton } from '../components/EVXButton';
+import {
+  requestNotificationPermissions,
+  scheduleDailyReminders,
+  cancelAllNotifications
+} from '../services/notifications';
+import { isHealthIntegrationAvailable } from '../services/health';
+import { supabase } from '../services/supabase';
 
-interface Props { navigation: any; }
+export const SettingsScreen: React.FC = () => {
+  const { colors, isDark } = useTheme();
+  const { user, theme, toggleTheme, setUser } = useAppStore();
 
-export const SettingsScreen: React.FC<Props> = ({ navigation }) => {
-  const { colors, spacing, fontSize, radius } = useTheme();
-  const { user, healthProfile, toggleTheme, theme } = useAppStore();
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [workoutReminder, setWorkoutReminder] = useState(true);
+  const [mealReminders, setMealReminders] = useState(true);
+  const [waterReminders, setWaterReminders] = useState(true);
+  const [sleepReminder, setSleepReminder] = useState(true);
+  const [healthConnected, setHealthConnected] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSignOut = () => {
+  useEffect(() => {
+    isHealthIntegrationAvailable().then(setHealthConnected);
+  }, []);
+
+  const handleToggleNotifications = async (value: boolean) => {
+    if (value) {
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert(
+          'Notifications Blocked',
+          'Please enable notifications in your device Settings to receive reminders.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    } else {
+      await cancelAllNotifications();
+    }
+    setNotifEnabled(value);
+  };
+
+  const handleSaveNotifications = async () => {
+    if (!notifEnabled) return;
+    setSaving(true);
+    try {
+      await scheduleDailyReminders({
+        workoutTime: '07:00',
+        mealReminders,
+        waterReminders,
+        sleepReminder: '22:00',
+      });
+      Alert.alert('✅ Saved', 'Your notification schedule has been updated.');
+    } catch (e) {
+      Alert.alert('Error', 'Could not save notifications. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSignOut = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => authService.signOut() },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut();
+          setUser(null);
+        },
+      },
     ]);
   };
 
-  const bmi = healthProfile
-    ? (healthProfile.weight_kg / Math.pow(healthProfile.height_cm / 100, 2)).toFixed(1)
-    : '—';
-
-  const Row = ({ label, value, onPress, danger }: any) => (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={0.7}
-      style={[styles.row, { borderBottomColor: colors.border }]}
-    >
-      <Text style={{ color: danger ? colors.error : colors.text, fontSize: fontSize.md }}>{label}</Text>
-      {value !== undefined && (
-        <Text style={{ color: colors.textTertiary, fontSize: fontSize.sm }}>{value}</Text>
-      )}
-      {onPress && !value && (
-        <Text style={{ color: colors.textTertiary, fontSize: 18 }}>›</Text>
-      )}
-    </TouchableOpacity>
-  );
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { padding: 20 },
+    title: { fontSize: 28, fontWeight: '800', color: colors.text, marginBottom: 24, letterSpacing: -0.5 },
+    section: { marginBottom: 24 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+    rowLast: { borderBottomWidth: 0 },
+    rowLabel: { fontSize: 15, color: colors.text, flex: 1 },
+    rowSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    healthBadge: {
+      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+      backgroundColor: healthConnected ? '#4CAF5020' : colors.border,
+    },
+    healthBadgeText: {
+      fontSize: 12, fontWeight: '700',
+      color: healthConnected ? '#4CAF50' : colors.textSecondary,
+    },
+    version: { textAlign: 'center', color: colors.textSecondary, fontSize: 12, marginTop: 8, marginBottom: 32 },
+  });
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.bg }]}
-      contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: spacing.lg }}
-    >
-      <View style={styles.pageHeader}>
-        <Text style={[styles.title, { color: colors.text, fontSize: fontSize.xxxl }]}>Settings ⚙️</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <Text style={styles.title}>Settings</Text>
+
+      {/* Profile */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <EVXCard>
+          <View style={[styles.row, styles.rowLast]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>{user?.full_name || 'EVX User'}</Text>
+              <Text style={styles.rowSub}>{user?.email ?? ''}</Text>
+            </View>
+            <Text style={{ fontSize: 32 }}>👤</Text>
+          </View>
+        </EVXCard>
       </View>
 
-      {/* Profile Card */}
-      <EVXCard style={{ marginBottom: 20, alignItems: 'center', paddingVertical: 24 }} glowColor={colors.primary}>
-        <View style={[styles.avatar, { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}40` }]}>
-          <Text style={{ color: colors.primary, fontSize: fontSize.xxxl, fontWeight: '800' }}>
-            {user?.full_name?.[0] || 'U'}
-          </Text>
-        </View>
-        <Text style={[{ color: colors.text, fontSize: fontSize.xl, fontWeight: '700', marginTop: 12 }]}>
-          {user?.full_name || 'EVX User'}
-        </Text>
-        <Text style={[{ color: colors.textSecondary, fontSize: fontSize.sm, marginTop: 4 }]}>
-          {user?.email}
-        </Text>
-        {healthProfile && (
-          <View style={{ flexDirection: 'row', gap: 20, marginTop: 16 }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: colors.primary, fontWeight: '800', fontSize: fontSize.lg }}>{healthProfile.weight_kg}kg</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: fontSize.xs }}>Weight</Text>
+      {/* Appearance */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <EVXCard>
+          <View style={[styles.row, styles.rowLast]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>Dark Mode</Text>
+              <Text style={styles.rowSub}>{isDark ? 'Currently dark' : 'Currently light'}</Text>
             </View>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: colors.accentGreen, fontWeight: '800', fontSize: fontSize.lg }}>{healthProfile.height_cm}cm</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: fontSize.xs }}>Height</Text>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor='#fff'
+            />
+          </View>
+        </EVXCard>
+      </View>
+
+      {/* Health Integration */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Health Data</Text>
+        <EVXCard>
+          <View style={[styles.row, styles.rowLast]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>{Platform.OS === 'ios' ? 'Apple Health' : 'Google Health Connect'}</Text>
+              <Text style={styles.rowSub}>Steps, calories, sleep, heart rate</Text>
             </View>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: colors.warning, fontWeight: '800', fontSize: fontSize.lg }}>{bmi}</Text>
-              <Text style={{ color: colors.textTertiary, fontSize: fontSize.xs }}>BMI</Text>
+            <View style={styles.healthBadge}>
+              <Text style={styles.healthBadgeText}>{healthConnected ? 'Connected' : 'Not connected'}</Text>
             </View>
           </View>
-        )}
-      </EVXCard>
-
-      {/* Health Profile */}
-      {healthProfile && (
-        <EVXCard style={{ marginBottom: 16 }}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>YOUR PROFILE</Text>
-          <Row label="Goal" value={healthProfile.primary_goal?.replace('_', ' ')} />
-          <Row label="Fitness Level" value={healthProfile.fitness_level} />
-          <Row label="Activity Level" value={healthProfile.activity_level?.replace('_', ' ')} />
-          <Row label="Age" value={`${healthProfile.age} years`} />
-          <Row label="Training Days" value={`${healthProfile.training_days?.length || 0} days/week`} />
-          <Row label="Sleep Target" value={`${healthProfile.sleep_hours_target} hours`} />
         </EVXCard>
-      )}
+      </View>
 
-      {/* Preferences */}
-      <EVXCard style={{ marginBottom: 16 }}>
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PREFERENCES</Text>
-        <View style={[styles.row, { borderBottomColor: colors.border }]}>
-          <Text style={{ color: colors.text, fontSize: fontSize.md }}>Dark Mode</Text>
-          <Switch
-            value={theme === 'dark'}
-            onValueChange={toggleTheme}
-            trackColor={{ false: colors.border, true: `${colors.primary}60` }}
-            thumbColor={theme === 'dark' ? colors.primary : colors.textTertiary}
-          />
-        </View>
-        <Row label="Language" value="English" />
-        <Row label="Units" value="Metric (kg, cm)" />
-      </EVXCard>
-
-      {/* About */}
-      <EVXCard style={{ marginBottom: 16 }}>
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ABOUT EVX</Text>
-        <Row label="Version" value="1.0.0" />
-        <Row label="Privacy Policy" onPress={() => {}} />
-        <Row label="Terms of Service" onPress={() => {}} />
-        <Row label="Support" onPress={() => {}} />
-      </EVXCard>
+      {/* Notifications */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Notifications</Text>
+        <EVXCard>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Enable Reminders</Text>
+            <Switch
+              value={notifEnabled}
+              onValueChange={handleToggleNotifications}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor='#fff'
+            />
+          </View>
+          <View style={[styles.row, { opacity: notifEnabled ? 1 : 0.4 }]}>
+            <Text style={styles.rowLabel}>Workout Reminder</Text>
+            <Switch value={workoutReminder} onValueChange={setWorkoutReminder} disabled={!notifEnabled}
+              trackColor={{ false: colors.border, true: colors.primary }} thumbColor='#fff' />
+          </View>
+          <View style={[styles.row, { opacity: notifEnabled ? 1 : 0.4 }]}>
+            <Text style={styles.rowLabel}>Meal Reminders</Text>
+            <Switch value={mealReminders} onValueChange={setMealReminders} disabled={!notifEnabled}
+              trackColor={{ false: colors.border, true: colors.primary }} thumbColor='#fff' />
+          </View>
+          <View style={[styles.row, { opacity: notifEnabled ? 1 : 0.4 }]}>
+            <Text style={styles.rowLabel}>Water Reminders</Text>
+            <Switch value={waterReminders} onValueChange={setWaterReminders} disabled={!notifEnabled}
+              trackColor={{ false: colors.border, true: colors.primary }} thumbColor='#fff' />
+          </View>
+          <View style={[styles.row, styles.rowLast, { opacity: notifEnabled ? 1 : 0.4 }]}>
+            <Text style={styles.rowLabel}>Sleep Reminder</Text>
+            <Switch value={sleepReminder} onValueChange={setSleepReminder} disabled={!notifEnabled}
+              trackColor={{ false: colors.border, true: colors.primary }} thumbColor='#fff' />
+          </View>
+        </EVXCard>
+        {notifEnabled && (
+          <EVXButton title={saving ? 'Saving...' : 'Save Notification Schedule'} onPress={handleSaveNotifications} style={{ marginTop: 12 }} />
+        )}
+      </View>
 
       {/* Sign Out */}
-      <EVXCard style={{ marginBottom: 16 }}>
-        <Row label="Sign Out" onPress={handleSignOut} danger />
-      </EVXCard>
+      <EVXButton title='Sign Out' onPress={handleSignOut} variant='ghost' />
 
-      <Text style={{ color: colors.textMuted, fontSize: fontSize.xs, textAlign: 'center', marginTop: 8 }}>
-        EVX – AI Health, Fitness & Nutrition Coach{'\n'}
-        This app provides educational content only. Not medical advice.
-      </Text>
+      <Text style={styles.version}>EVX v1.0.0 · Built with ❤️</Text>
     </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  pageHeader: { paddingTop: 56, paddingBottom: 16 },
-  title: { fontWeight: '800' },
-  avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1 },
-});
+export default SettingsScreen;
