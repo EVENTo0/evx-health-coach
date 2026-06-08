@@ -1,29 +1,47 @@
 {
   "cli": {
-    "version": ">= 8.0.0"
+    "version": ">= 8.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_ENV": "development"
-      }
+      "ios": { "simulator": true },
+      "env": { "EXPO_PUBLIC_ENV": "development" }
     },
     "preview": {
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_ENV": "staging"
+      "channel": "preview",
+      "env": { "EXPO_PUBLIC_ENV": "staging" },
+      "ios": {
+        "enterpriseProvisioning": "adhoc"
       }
     },
     "production": {
       "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_ENV": "production"
+      "channel": "production",
+      "env": { "EXPO_PUBLIC_ENV": "production" },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "resourceClass": "medium"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "YOUR_APPLE_ID@email.com",
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
+      }
+    }
   }
 }

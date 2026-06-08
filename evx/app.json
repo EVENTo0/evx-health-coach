@@ -7,21 +7,24 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "backgroundColor": "#0A0A0F"
+      "backgroundColor": "#0A0A0F",
+      "resizeMode": "contain"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.evx.healthcoach",
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "EVX needs camera access to capture lab report images.",
         "NSPhotoLibraryUsageDescription": "EVX needs photo library access to upload lab reports.",
-        "NSHealthShareUsageDescription": "EVX can optionally read health data to enhance your coaching.",
-        "NSHealthUpdateUsageDescription": "EVX can write fitness data to HealthKit."
+        "NSHealthShareUsageDescription": "EVX reads your health data (steps, sleep, heart rate, calories) to personalize your coaching experience.",
+        "NSHealthUpdateUsageDescription": "EVX writes workout data to Apple Health to keep your fitness records in sync.",
+        "UIBackgroundModes": ["fetch", "remote-notification"]
       }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0F"
       },
       "package": "com.evx.healthcoach",
@@ -30,8 +33,16 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "CAMERA",
-        "INTERNET"
-      ]
+        "INTERNET",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_WEIGHT"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -41,6 +52,15 @@
     "plugins": [
       "expo-secure-store",
       "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#00D4FF",
+          "sounds": [],
+          "mode": "production"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -59,6 +79,14 @@
       "eas": {
         "projectId": "evx-health-coach"
       }
+    },
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/evx-health-coach"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
