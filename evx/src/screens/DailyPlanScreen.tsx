@@ -59,7 +59,7 @@ export const DailyPlanScreen: React.FC<Props> = ({ navigation }) => {
     }
     setGenerating(true);
     try {
-      const aiPlan = await generateDailyPlan(healthProfile, today);
+      const aiPlan = await generateDailyPlan(healthProfile, { has_workout: false, has_meal_plan: false });
       const saved = await dailyPlanService.create({
         user_id: user!.id,
         date: today,
