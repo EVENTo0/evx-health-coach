@@ -14,29 +14,29 @@
       "distribution": "internal",
       "channel": "preview",
       "env": { "EXPO_PUBLIC_ENV": "staging" },
-      "ios": {
-        "enterpriseProvisioning": "adhoc"
-      }
+      "ios": { "enterpriseProvisioning": "adhoc" }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": { "EXPO_PUBLIC_ENV": "production" },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "credentialsSource": "remote"
       },
       "android": {
         "buildType": "app-bundle",
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "credentialsSource": "remote"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "YOUR_APPLE_ID@email.com",
-        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        "appleId": "REPLACE_WITH_YOUR_APPLE_ID",
+        "ascAppId": "REPLACE_WITH_ASC_APP_ID",
+        "appleTeamId": "REPLACE_WITH_TEAM_ID"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
