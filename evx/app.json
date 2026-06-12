@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "EVX",
+    "name": "EVX Health Coach",
     "slug": "evx-health-coach",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
+      "image": "./assets/splash-icon.png",
       "backgroundColor": "#0A0A0F",
       "resizeMode": "contain"
     },
@@ -41,8 +42,7 @@
         "android.permission.health.READ_SLEEP",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_WEIGHT"
-      ],
-      "googleServicesFile": "./google-services.json"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -82,8 +82,7 @@
     },
     "updates": {
       "enabled": true,
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/evx-health-coach"
+      "fallbackToCacheTimeout": 0
     },
     "runtimeVersion": {
       "policy": "appVersion"
