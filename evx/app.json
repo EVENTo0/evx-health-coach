@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "EVX Health Coach",
-    "slug": "evx-health-coach",
+    "slug": "evx",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,7 +20,10 @@
         "NSPhotoLibraryUsageDescription": "EVX needs photo library access to upload lab reports.",
         "NSHealthShareUsageDescription": "EVX reads your health data (steps, sleep, heart rate, calories) to personalize your coaching experience.",
         "NSHealthUpdateUsageDescription": "EVX writes workout data to Apple Health to keep your fitness records in sync.",
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -86,6 +89,7 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
-    }
+    },
+    "owner": "evento0"
   }
 }
