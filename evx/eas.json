@@ -26,8 +26,13 @@
       },
       "android": {
         "buildType": "app-bundle",
-        "resourceClass": "medium",
-        "credentialsSource": "remote"
+        "resourceClass": "large",
+        "credentialsSource": "remote",
+        "env": {
+          "ORG_GRADLE_PROJECT_org_gradle_jvmargs": "-Xmx4096m -XX:+HeapDumpOnOutOfMemoryError",
+          "ORG_GRADLE_PROJECT_org_gradle_daemon": "false",
+          "ORG_GRADLE_PROJECT_org_gradle_parallel": "false"
+        }
       }
     }
   },
