@@ -1,0 +1,52 @@
+{
+  "cli": {
+    "version": ">= 8.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true },
+      "env": { "EXPO_PUBLIC_ENV": "development" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": { "EXPO_PUBLIC_ENV": "staging" },
+      "ios": { "enterpriseProvisioning": "adhoc" }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": { "EXPO_PUBLIC_ENV": "production" },
+      "ios": {
+        "resourceClass": "m-medium",
+        "credentialsSource": "remote"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "resourceClass": "large",
+        "credentialsSource": "remote",
+        "env": {
+          "ORG_GRADLE_PROJECT_org_gradle_jvmargs": "-Xmx4096m -XX:+HeapDumpOnOutOfMemoryError",
+          "ORG_GRADLE_PROJECT_org_gradle_daemon": "false",
+          "ORG_GRADLE_PROJECT_org_gradle_parallel": "false"
+        }
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "iooctopuss@gmail.com",
+        "ascAppId": "REPLACE_WITH_ASC_APP_ID",
+        "appleTeamId": "HHML4H774S"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
+      }
+    }
+  }
+}
