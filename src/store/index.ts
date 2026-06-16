@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ThemeMode, Language, User, HealthProfile } from '../types';
+import type { SubscriptionStatus, PlanType } from '../services/subscription';
 
 // Lazy-load AsyncStorage so web + tests don't break if native module is absent
 const getStorage = () => {
@@ -9,7 +10,6 @@ const getStorage = () => {
     const AS = require('@react-native-async-storage/async-storage');
     return AS.default ?? AS;
   } catch {
-    // Fallback to localStorage on web / test env
     return {
       getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
       setItem: (key: string, value: string) => Promise.resolve(localStorage.setItem(key, value)),
@@ -31,6 +31,11 @@ interface AppStore {
   healthProfile: HealthProfile | null;
   setHealthProfile: (profile: HealthProfile | null) => void;
 
+  // Subscription state
+  subscription: Partial<SubscriptionStatus>;
+  setSubscription: (sub: Partial<SubscriptionStatus>) => void;
+  isPremium: () => boolean;
+
   isLoading: boolean;
   error: string | null;
   setLoading: (loading: boolean) => void;
@@ -40,7 +45,7 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       theme: 'dark',
       language: 'en',
       setTheme: (theme) => set({ theme }),
@@ -53,6 +58,10 @@ export const useAppStore = create<AppStore>()(
       healthProfile: null,
       setHealthProfile: (healthProfile) => set({ healthProfile }),
 
+      subscription: { isPremium: false, plan: 'free' as PlanType },
+      setSubscription: (sub) => set((s) => ({ subscription: { ...s.subscription, ...sub } })),
+      isPremium: () => get().subscription?.isPremium === true,
+
       isLoading: false,
       error: null,
       setLoading: (isLoading) => set({ isLoading }),
@@ -62,7 +71,6 @@ export const useAppStore = create<AppStore>()(
     {
       name: 'evx-app-store',
       storage: createJSONStorage(getStorage),
-      // Only persist non-sensitive UI preferences
       partialize: (state) => ({
         theme: state.theme,
         language: state.language,
