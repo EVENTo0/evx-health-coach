@@ -4,18 +4,23 @@
 
 EVX is a production-ready AI Health, Fitness & Nutrition Coach built with React Native (Expo) + Supabase + OpenAI.
 
+---
+
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Mobile Frontend | React Native + Expo (~51) |
+| Mobile Frontend | React Native + Expo SDK 56 |
 | Language | TypeScript (strict) |
 | State Management | Zustand |
 | Navigation | React Navigation v6 (Stack + Bottom Tabs) |
-| Backend | Supabase (Auth, DB, Storage) |
+| Backend | Supabase (Auth, DB, Storage, Edge Functions) |
 | Database | PostgreSQL (via Supabase) |
-| AI Layer | OpenAI GPT-4o |
-| Form Handling | React Hook Form + Zod |
+| AI Layer | OpenAI GPT-4o via Supabase Edge Function |
+| CI/CD | GitHub Actions + EAS Build (cloud) |
+| Build Output | AAB (Android), IPA (iOS — pending) |
+
+---
 
 ## Project Structure
 
@@ -32,81 +37,119 @@ evx/
 │   │   ├── LabScreen.tsx
 │   │   ├── DailyPlanScreen.tsx
 │   │   ├── ProgressScreen.tsx
+│   │   ├── EducationScreen.tsx
 │   │   └── SettingsScreen.tsx
-│   ├── components/       # Reusable UI primitives
-│   │   ├── EVXButton.tsx
-│   │   ├── EVXCard.tsx
-│   │   ├── EVXInput.tsx
-│   │   ├── EVXHeader.tsx
-│   │   ├── EVXLoader.tsx
-│   │   └── StatRing.tsx
-│   ├── services/         # API and external integrations
-│   │   ├── supabase.ts   # All DB operations
-│   │   └── ai.ts         # AI Orchestrator
+│   ├── components/       # Reusable UI components
+│   ├── services/         # API + Supabase + AI layer
+│   ├── navigation/       # AppNavigator
 │   ├── store/            # Zustand global state
-│   ├── hooks/            # Custom hooks
-│   ├── navigation/       # Navigator config
-│   ├── types/            # TypeScript types
 │   ├── constants/        # Theme, config
-│   ├── utils/            # Helper functions
-│   └── i18n/             # English + Arabic translations
+│   ├── hooks/            # Custom React hooks
+│   ├── i18n/             # English + Arabic translations
+│   └── types/            # Shared TypeScript types
 ├── supabase/
-│   └── migrations/       # SQL schema files
-├── assets/               # Images, fonts, icons
-├── docs/                 # Documentation
-├── app.json              # Expo config
-├── eas.json              # EAS Build config
-└── .env.example          # Environment variables template
+│   ├── functions/
+│   │   └── ai-orchestrator/  # All AI calls go here (protects API key)
+│   └── migrations/           # PostgreSQL schema migrations
+├── android/
+│   └── gradle.properties     # JVM heap config for EAS builds
+├── .github/
+│   └── workflows/
+│       └── android-build.yml # CI/CD pipeline
+├── eas.json                  # EAS build profiles
+└── app.json                  # Expo config
 ```
 
-## AI Orchestrator
+---
 
-Single service in `src/services/ai.ts` with 4 workflows:
+## AI Architecture
 
-1. **Workout Workflow** — Generates personalized exercise plans based on user profile
-2. **Nutrition Workflow** — Generates daily meal plans with macros
-3. **Lab Workflow** — Provides educational summaries of lab results
-4. **Daily Planning Workflow** — Creates optimized daily schedules
+All AI interactions are routed through the `ai-orchestrator` Supabase Edge Function. The OpenAI API key is **never exposed** to the client.
 
-All workflows:
-- Load user context from health profile
-- Build structured prompts
-- Request JSON from OpenAI GPT-4o
-- Return typed TypeScript objects
-- Save outputs to Supabase
+```
+Mobile App
+    │
+    ▼
+Supabase Edge Function (ai-orchestrator)
+    │  - Loads user context from DB
+    │  - Selects workflow (workout / nutrition / lab / daily)
+    │  - Builds prompt
+    │  - Calls OpenAI GPT-4o
+    │  - Stores output in Supabase
+    │
+    ▼
+OpenAI GPT-4o
+```
+
+### Workflows
+
+| Workflow | Inputs | Outputs |
+|----------|--------|---------|
+| Workout | Goals, fitness level, schedule, symptoms | Exercises, sets, reps, rest, modifications |
+| Nutrition | Goals, preferences, symptoms | Meals, portions, hydration, substitutions |
+| Lab Analysis | Uploaded lab report | Educational summaries, trends, lifestyle notes |
+| Daily Plan | Schedule, workouts, meals, recovery | Timeline, priorities, daily actions |
+
+---
 
 ## Database Schema
 
-9 tables with full RLS:
-- `users` — Extends Supabase auth
-- `health_profiles` — Complete user health data
-- `goals` — User fitness goals
-- `workouts` — Generated workout plans (JSONB exercises)
-- `meal_plans` — Generated nutrition plans (JSONB meals)
-- `lab_reports` — Uploaded lab files (Supabase Storage)
-- `lab_analysis` — AI-generated lab interpretations
-- `daily_plans` — AI-generated daily schedules
-- `progress_logs` — Daily tracking metrics
+Managed via Supabase migrations in `supabase/migrations/`.
+
+Key tables:
+- `profiles` — user profile + health data
+- `workouts` — generated workout plans
+- `nutrition_plans` — generated meal plans
+- `lab_reports` — uploaded lab files + AI analysis
+- `daily_plans` — daily planning outputs
+- `progress_logs` — user progress entries
+
+All tables have Row Level Security (RLS) enabled.
+
+---
+
+## CI/CD Pipeline
+
+```
+git push → main
+    │
+    ▼
+GitHub Actions (.github/workflows/android-build.yml)
+    │  1. Checkout code
+    │  2. Install Node.js 20
+    │  3. npm install
+    │  4. Setup EAS CLI
+    │  5. eas build --platform android --profile production
+    │
+    ▼
+EAS Build Servers (expo.dev)
+    │  - Runs Gradle + React Native bundler
+    │  - Produces signed .aab
+    │
+    ▼
+Artifact available at expo.dev/accounts/evento0/projects/evx/builds/
+```
+
+---
 
 ## Security
 
-- Row Level Security on all tables
-- Users can only access their own data
-- Private storage bucket for lab reports
-- Environment variables for all secrets
-- Input validation on all forms
+- OpenAI API key stored as Supabase secret (server-side only)
+- Supabase anon key stored as GitHub secret + EAS env var
+- RLS enforced on all user data tables
+- No sensitive keys in client bundle
+- Input validation via Zod on all forms
 
-## Localization
+---
 
-Supports English (default) and Arabic (RTL prepared).
-Translation files in `src/i18n/`.
+## Build Status
 
-## Design System
+| Platform | Status | Date |
+|----------|--------|------|
+| Android (AAB) | ✅ Production build succeeded | June 15, 2026 |
+| iOS (IPA) | ⏳ Pending Apple Developer enrollment | — |
+| Web | ☐ Not yet deployed | — |
 
-Premium health-tech aesthetic:
-- Dark mode (default) + Light mode
-- Brand color: `#00D4FF` (EVX Blue)
-- Apple-inspired typography
-- WHOOP-inspired data visualization
-- Consistent spacing scale (4px base)
-- Cards with glow effects for key metrics
+**Latest Android Build:**
+- EAS Build ID: `772f03ce-bd31-432c-92f6-781d2343faaa`
+- Download: https://expo.dev/artifacts/eas/3jlC2dSy4Uy-kTUXlZFgCkH4DF2gIPXSbQofLuN6X90.aab

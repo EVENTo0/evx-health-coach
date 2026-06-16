@@ -76,18 +76,27 @@ npm run web        # Browser at localhost:19006
 
 ## 5. Production Build
 
-### iOS
+### Android ✅ (Build Successful — June 15, 2026)
+
+Builds are triggered automatically via GitHub Actions on every push to `main`.
+
+**Latest Production Build:**
+- EAS Build ID: `772f03ce-bd31-432c-92f6-781d2343faaa`
+- EAS Build Page: https://expo.dev/accounts/evento0/projects/evx/builds/772f03ce-bd31-432c-92f6-781d2343faaa
+- AAB Download: https://expo.dev/artifacts/eas/3jlC2dSy4Uy-kTUXlZFgCkH4DF2gIPXSbQofLuN6X90.aab
+
+To trigger a new build, push any change to the `main` branch. GitHub Actions handles the rest.
+
+**Build Configuration:**
+- Resource class: `medium` (EAS free tier compatible)
+- JVM heap: `3072m` (set via `android/gradle.properties`)
+- Gradle daemon: disabled
+- Output: `.aab` (Android App Bundle for Play Store)
+
+### iOS (Pending — Apple Developer enrollment required)
 ```bash
 eas build --platform ios --profile production
-# Submit to App Store:
 eas submit --platform ios
-```
-
-### Android
-```bash
-eas build --platform android --profile production
-# Submit to Play Store:
-eas submit --platform android
 ```
 
 ### Web
@@ -98,24 +107,38 @@ npm run build:web
 
 ---
 
-## 6. Environment Checklist
+## 6. GitHub Actions CI/CD
+
+The workflow at `.github/workflows/android-build.yml` runs automatically on push to `main`.
+
+**Required GitHub Secrets:**
+| Secret | Description |
+|--------|-------------|
+| `EXPO_TOKEN` | EAS authentication token |
+| `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+
+---
+
+## 7. Environment Checklist
 
 | Item | Status |
 |------|--------|
-| Supabase project created | ☐ |
-| SQL migrations applied | ☐ |
-| Storage buckets created | ☐ |
-| RLS policies active | ☐ |
-| Edge function deployed | ☐ |
-| OPENAI_API_KEY set as secret | ☐ |
-| .env filled with Supabase keys | ☐ |
-| iOS build submitted | ☐ |
-| Android build submitted | ☐ |
+| Supabase project created | ✅ |
+| SQL migrations applied | ✅ |
+| Storage buckets created | ✅ |
+| RLS policies active | ✅ |
+| Edge function deployed | ✅ |
+| OPENAI_API_KEY set as secret | ✅ |
+| GitHub secrets configured | ✅ |
+| Android build succeeded | ✅ |
+| Android AAB ready for Play Store | ✅ |
+| iOS build submitted | ⏳ Pending Apple Developer enrollment |
 | Web deployed | ☐ |
 
 ---
 
-## 7. Post-Deploy Verification
+## 8. Post-Deploy Verification
 
 Test each flow:
 1. ✅ Register new account
@@ -128,3 +151,14 @@ Test each flow:
 8. ✅ Log progress
 9. ✅ View dashboard
 10. ✅ Toggle dark/light mode
+
+---
+
+## 9. Google Play Submission Steps
+
+1. Go to https://play.google.com/console
+2. Create new app → Set up store listing
+3. Navigate to **Testing → Internal testing**
+4. Upload the `.aab` file from the EAS artifacts link above
+5. Add internal testers → Roll out release
+6. After testing, promote to **Production**
