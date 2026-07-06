@@ -14,7 +14,12 @@
       "distribution": "internal",
       "channel": "preview",
       "env": { "EXPO_PUBLIC_ENV": "staging" },
-      "ios": { "enterpriseProvisioning": "adhoc" }
+      "ios": { "enterpriseProvisioning": "adhoc" },
+      "android": {
+        "buildType": "apk",
+        "resourceClass": "medium",
+        "gradleCommand": ":app:assembleRelease"
+      }
     },
     "production": {
       "autoIncrement": true,

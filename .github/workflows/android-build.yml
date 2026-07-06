@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS build profile (production = AAB for Play Store, preview = APK for direct install)'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
 
 jobs:
   build:
@@ -28,5 +37,5 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build Android (Production)
-        run: eas build --platform android --profile production --non-interactive
+      - name: Build Android
+        run: eas build --platform android --profile ${{ github.event.inputs.profile || 'production' }} --non-interactive
