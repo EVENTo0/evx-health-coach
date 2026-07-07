@@ -1,9 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const URL  = import.meta.env.VITE_SUPABASE_URL  as string;
-const KEY  = import.meta.env.VITE_SUPABASE_SERVICE_KEY as string;
+const URL = import.meta.env.VITE_SUPABASE_URL as string;
+// SECURITY: only the ANON key is ever shipped to the browser. Admin access is
+// granted via RLS policies keyed off `public.users.is_admin`, checked through
+// the authenticated user's own JWT — never a service role key client-side.
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-export const supabase = createClient(URL, KEY);
+export const supabase = createClient(URL, ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true },
+});
+
 export type Category = 'nutrition' | 'training' | 'recovery' | 'mindset' | 'labs' | 'general';
 
 export interface Article {
