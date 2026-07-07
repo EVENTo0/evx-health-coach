@@ -14,10 +14,11 @@ import {
 } from '../services/notifications';
 import { isHealthIntegrationAvailable } from '../services/health';
 import { supabase } from '../services/supabase';
+import { applyRTL } from '../i18n';
 
 export const SettingsScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
-  const { user, theme, toggleTheme, setUser } = useAppStore();
+  const { user, theme, toggleTheme, setUser, language, setLanguage } = useAppStore();
 
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [workoutReminder, setWorkoutReminder] = useState(true);
@@ -78,6 +79,22 @@ export const SettingsScreen: React.FC = () => {
         },
       },
     ]);
+  };
+
+
+  const handleChangeLanguage = (lang: 'en' | 'ar') => {
+    if (lang === language) return;
+    setLanguage(lang);
+    const { restartRequired } = applyRTL(lang);
+    if (restartRequired) {
+      Alert.alert(
+        lang === 'ar' ? 'إعادة التشغيل مطلوبة' : 'Restart Required',
+        lang === 'ar'
+          ? 'يرجى إغلاق التطبيق وإعادة فتحه لتطبيق اتجاه الصفحة الجديد (RTL).'
+          : 'Please close and reopen the app to apply the new layout direction.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const styles = StyleSheet.create({
@@ -150,6 +167,31 @@ export const SettingsScreen: React.FC = () => {
             <View style={styles.healthBadge}>
               <Text style={styles.healthBadgeText}>{healthConnected ? 'Connected' : 'Not connected'}</Text>
             </View>
+          </View>
+        </EVXCard>
+      </View>
+
+      {/* Language */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Language / اللغة</Text>
+        <EVXCard>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>English</Text>
+            <Switch
+              value={language === 'en'}
+              onValueChange={() => handleChangeLanguage('en')}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor='#fff'
+            />
+          </View>
+          <View style={[styles.row, styles.rowLast]}>
+            <Text style={styles.rowLabel}>العربية (Arabic)</Text>
+            <Switch
+              value={language === 'ar'}
+              onValueChange={() => handleChangeLanguage('ar')}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor='#fff'
+            />
           </View>
         </EVXCard>
       </View>

@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
-import { StatusBar, View, Linking } from 'react-native';
+import { StatusBar, Linking } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
 import { supabase } from './src/services/supabase';
 import { useAppStore } from './src/store';
+import { applyRTL } from './src/i18n';
 
 // Parses tokens out of a Supabase auth deep link, whether they arrive
 // as query params (?access_token=...) or a URL fragment (#access_token=...)
@@ -26,7 +27,14 @@ function parseAuthParams(url: string): Record<string, string> {
 
 export default function App() {
   const theme = useAppStore((s) => s.theme);
+  const language = useAppStore((s) => s.language);
   const [showResetPassword, setShowResetPassword] = useState(false);
+
+  // Enforce correct text direction (LTR/RTL) as early as possible on boot,
+  // based on the persisted language preference (e.g. Arabic -> RTL).
+  useEffect(() => {
+    applyRTL(language as 'en' | 'ar');
+  }, []);
 
   const handleAuthDeepLink = async (url: string | null) => {
     if (!url) return;
