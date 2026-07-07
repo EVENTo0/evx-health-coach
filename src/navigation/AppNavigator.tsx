@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, SafeAreaView } from 'react-native';
 import { useAppStore } from '../store';
 import { useTheme } from '../hooks/useTheme';
+import { useAuth } from '../hooks/useAuth';
 
 // Screens
 import { SplashScreen } from '../screens/SplashScreen';
@@ -29,7 +30,7 @@ const TAB_CONFIG: { key: Tab; emoji: string; label: string }[] = [
 ];
 
 export const AppNavigator: React.FC = () => {
-  const { user } = useAppStore();
+  const { user } = useAuth();
   const { colors } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [hasOnboarded, setHasOnboarded] = useState(false);

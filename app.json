@@ -90,6 +90,7 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "owner": "evento0"
+    "owner": "evento0",
+    "scheme": "evx"
   }
 }

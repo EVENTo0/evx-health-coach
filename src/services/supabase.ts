@@ -37,7 +37,9 @@ export const authService = {
   },
 
   resetPassword: async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'evx://reset-password',
+    });
     if (error) throw error;
   },
 
