@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase, type Article, type Category } from './supabase';
+import { supabase, type Article, type Category, type Subscription } from './supabase';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -468,6 +468,104 @@ function VideosManager() {
   );
 }
 
+
+// ─── Revenue Manager ──────────────────────────────────────────────────────────
+const PLAN_PRICE: Record<string, number> = { premium_monthly: 9.99, premium_annual: 59.99 / 12, free: 0 };
+const PLAN_LABEL: Record<string, string> = { premium_monthly: 'Monthly', premium_annual: 'Annual', free: 'Free' };
+
+interface SubRow extends Subscription { email?: string; }
+
+function RevenueManager() {
+  const [subs, setSubs] = useState<SubRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data: subsData } = await supabase.from('subscriptions').select('*').order('created_at', { ascending: false });
+    const rows = (subsData as Subscription[]) ?? [];
+    const userIds = rows.map(r => r.user_id);
+    let emailMap: Record<string, string> = {};
+    if (userIds.length) {
+      const { data: usersData } = await supabase.from('users').select('id,email').in('id', userIds);
+      emailMap = Object.fromEntries((usersData ?? []).map((u: any) => [u.id, u.email]));
+    }
+    setSubs(rows.map(r => ({ ...r, email: emailMap[r.user_id] })));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const active = subs.filter(s => s.status === 'active');
+  const trialing = subs.filter(s => s.trial_ends_at && new Date(s.trial_ends_at) > new Date() && s.status !== 'active');
+  const churned = subs.filter(s => s.status === 'cancelled' || s.status === 'expired');
+  const mrr = active.reduce((sum, s) => sum + (PLAN_PRICE[s.plan] ?? 0), 0);
+
+  const statCard = (emoji: string, label: string, value: string, color: string) => (
+    <div style={{ ...card, padding: 20, flex: 1 }}>
+      <div style={{ fontSize: 22, marginBottom: 8 }}>{emoji}</div>
+      <div style={{ fontSize: 26, fontWeight: 800, color }}>{value}</div>
+      <div style={{ fontSize: 12, color: C.dim, marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, marginBottom: 20 }}>Revenue 💰</h1>
+
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+        {statCard('💵', 'Est. MRR', `$${mrr.toFixed(2)}`, C.green)}
+        {statCard('✅', 'Active Subscribers', String(active.length), C.primary)}
+        {statCard('🎁', 'On Free Trial', String(trialing.length), C.yellow)}
+        {statCard('📉', 'Churned', String(churned.length), C.red)}
+      </div>
+
+      <div style={card}>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: C.dim }}>Loading…</div>
+        ) : subs.length === 0 ? (
+          <div style={{ padding: 60, textAlign: 'center', color: C.dim }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>No subscriptions yet</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>Once users start trials or subscribe, they'll show up here</div>
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={th}>User</th>
+                <th style={th}>Plan</th>
+                <th style={th}>Status</th>
+                <th style={th}>Trial Ends</th>
+                <th style={th}>Renews / Expires</th>
+                <th style={th}>Since</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subs.map(s => (
+                <tr key={s.id}>
+                  <td style={td}>
+                    <div style={{ fontWeight: 600 }}>{s.email ?? 'Unknown'}</div>
+                    <div style={{ fontSize: 11, color: C.dim, fontFamily: 'monospace' }}>{s.user_id.slice(0, 8)}…</div>
+                  </td>
+                  <td style={td}><span style={badge(s.plan === 'free' ? C.dim : C.purple)}>{PLAN_LABEL[s.plan] ?? s.plan}</span></td>
+                  <td style={td}>
+                    <span style={badge(
+                      s.status === 'active' ? C.green : s.status === 'cancelled' ? C.red : s.status === 'expired' ? C.orange : C.dim
+                    )}>{s.status}</span>
+                  </td>
+                  <td style={{ ...td, color: C.muted }}>{s.trial_ends_at ? new Date(s.trial_ends_at).toLocaleDateString() : '—'}</td>
+                  <td style={{ ...td, color: C.muted }}>{s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '—'}</td>
+                  <td style={{ ...td, color: C.dim }}>{new Date(s.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Users Viewer ─────────────────────────────────────────────────────────────
 interface UserRow { id:string; email:string; full_name:string|null; created_at:string; }
 
@@ -520,10 +618,11 @@ function UsersManager() {
 }
 
 // ─── Main App Shell ───────────────────────────────────────────────────────────
-type View = 'overview'|'articles'|'videos'|'users';
+type View = 'overview'|'revenue'|'articles'|'videos'|'users';
 
 const NAV: { key:View; emoji:string; label:string }[] = [
   { key:'overview',  emoji:'📊', label:'Overview'  },
+  { key:'revenue',   emoji:'💰', label:'Revenue'   },
   { key:'articles',  emoji:'📚', label:'Articles'  },
   { key:'videos',    emoji:'🎬', label:'Videos'    },
   { key:'users',     emoji:'👥', label:'Users'     },
@@ -579,6 +678,7 @@ export function App() {
       {/* Main */}
       <main style={{ flex:1, overflow:'auto', padding:32 }}>
         {view==='overview' && <Overview />}
+        {view==='revenue' && <RevenueManager />}
         {view==='articles' && <ArticlesManager />}
         {view==='videos'   && <VideosManager />}
         {view==='users'    && <UsersManager />}

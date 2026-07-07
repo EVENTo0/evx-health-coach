@@ -22,3 +22,15 @@ export interface Article {
   created_at: string;
   updated_at: string;
 }
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan: 'free' | 'premium_monthly' | 'premium_annual';
+  status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  purchase_token: string | null;
+  expires_at: string | null;
+  trial_ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
