@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Agent workspace (not part of app source)
+.agents/skills-library/
