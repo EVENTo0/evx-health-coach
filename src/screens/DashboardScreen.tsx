@@ -10,7 +10,7 @@ import { EVXLoader } from '../components/EVXLoader';
 import { StatRing } from '../components/StatRing';
 import { StreakCard } from '../components/StreakCard';
 import { SymptomCheckIn } from '../components/SymptomCheckIn';
-import { readTodayHealthData, isHealthIntegrationAvailable, type HealthSnapshot } from '../services/health';
+import { readTodayHealthData, isHealthIntegrationAvailable, syncWearableSnapshot, type HealthSnapshot } from '../services/health';
 import { getStreakData, type StreakData } from '../services/streaks';
 import { getTodaySymptoms, logSymptoms, type SymptomLog } from '../services/symptoms';
 import { supabase } from '../services/supabase';
@@ -38,7 +38,7 @@ export const DashboardScreen: React.FC = () => {
       const today = new Date().toISOString().split('T')[0];
 
       const [health, available, streakRes, workoutRes, mealRes, planRes, symptomRes] = await Promise.allSettled([
-        readTodayHealthData(),
+        syncWearableSnapshot(user.id).catch(() => readTodayHealthData()),
         isHealthIntegrationAvailable(),
         getStreakData(user.id),
         supabase.from('workouts').select('id').eq('user_id', user.id).gte('created_at', today).limit(1),
@@ -50,7 +50,7 @@ export const DashboardScreen: React.FC = () => {
       setHealthAvailable(available.status === 'fulfilled' ? available.value : false);
 
       setData({
-        health: health.status === 'fulfilled' ? health.value : { date: today },
+        health: health.status === 'fulfilled' && health.value !== null ? health.value : { date: today },
         streakData: streakRes.status === 'fulfilled' ? streakRes.value : null,
         todayWorkout: workoutRes.status === 'fulfilled' ? (workoutRes.value.data?.length ?? 0) > 0 : false,
         todayMeal: mealRes.status === 'fulfilled' ? (mealRes.value.data?.length ?? 0) > 0 : false,

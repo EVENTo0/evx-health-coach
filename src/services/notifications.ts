@@ -4,9 +4,9 @@
  * Uses expo-notifications for both local + push.
  */
 
-// @ts-ignore — installed at build time
+// @ts-ignore -- installed at build time
 import * as Notifications from 'expo-notifications';
-// @ts-ignore — installed at build time
+// @ts-ignore -- installed at build time
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
@@ -80,7 +80,7 @@ export const scheduleDailyReminders = async (config: {
   await Notifications.scheduleNotificationAsync({
     content: {
       title: '🌅 Good morning!',
-      body: 'Your daily plan is ready. Start strong.',
+      body: `Your daily plan is ready. Start strong.`,
       data: { screen: 'DailyPlan' },
     },
     trigger: {
@@ -97,7 +97,7 @@ export const scheduleDailyReminders = async (config: {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '💧 Hydration check',
-          body: 'Stay ahead of your water goal. Drink up!',
+          body: `Stay ahead of your water goal. Drink up.`,
           data: { screen: 'Dashboard' },
         },
         trigger: {
@@ -170,6 +170,121 @@ export const scheduleStreakCelebration = async (streakDays: number): Promise<voi
       data: { screen: 'Progress' },
     },
     trigger: null, // Immediate
+  });
+};
+
+
+// ----------------------------------------------------------------
+// Smart Scheduling -- adapts to user's actual health profile times
+// ----------------------------------------------------------------
+export interface SmartNotificationConfig {
+  workoutStartTime: string;  // "HH:MM" from health profile
+  workoutEndTime: string;    // "HH:MM"
+  workSleepHours: number;    // target sleep hours
+  mealReminders: boolean;
+  waterReminders: boolean;
+  symptomCheckIn: boolean;   // morning symptom reminder
+  trainingDays: number[];    // 0=Sun ... 6=Sat
+}
+
+export const scheduleSmartReminders = async (cfg: SmartNotificationConfig): Promise<void> => {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+
+  const [wkStartH, wkStartM] = cfg.workoutStartTime.split(':').map(Number);
+  const remindH = wkStartH > 0 ? wkStartH - 1 : 0; // 1 hour before workout
+
+  // Workout prep -- only on training days
+  if (cfg.trainingDays.length > 0) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '💪 Workout in 1 hour!',
+        body: `Prep your gear, hydrate, and warm up. Let's go.`,
+        data: { screen: 'Workout' },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: (cfg.trainingDays[0] % 7) + 1, // iOS weekday 1=Sun
+        hour: remindH,
+        minute: wkStartM,
+      },
+    });
+  }
+
+  // Morning dashboard + symptom check-in -- 30 min after wake (estimate: 7 AM)
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: cfg.symptomCheckIn ? '🌅 Good morning! How do you feel?' : '🌅 Good morning!',
+      body: cfg.symptomCheckIn
+        ? `Log your symptoms so your AI coach can adapt today's plan.`
+        : `Your daily plan is ready. Start strong.`,
+      data: { screen: cfg.symptomCheckIn ? 'Dashboard' : 'DailyPlan' },
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 7, minute: 30 },
+  });
+
+  // Meal reminders -- timed relative to workout window
+  if (cfg.mealReminders) {
+    const [wkEndH] = cfg.workoutEndTime.split(':').map(Number);
+    const dinnerH = Math.min(wkEndH + 1, 20); // 1 hr post-workout or 8 PM max
+    const lunches = [{ hour: 13, minute: 0 }];
+    const dinners = [{ hour: dinnerH, minute: 0 }];
+
+    await Notifications.scheduleNotificationAsync({
+      content: { title: '🌅 Breakfast time', body: `Fuel up right. Check your meal plan.`, data: { screen: 'Nutrition' } },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 8, minute: 0 },
+    });
+    for (const m of [...lunches, ...dinners]) {
+      await Notifications.scheduleNotificationAsync({
+        content: { title: '🍽️ Meal reminder', body: `Stay on track with your nutrition plan.`, data: { screen: 'Nutrition' } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: m.hour, minute: m.minute },
+      });
+    }
+  }
+
+  // Water reminders -- every 2 hours during waking hours
+  if (cfg.waterReminders) {
+    for (const hour of [8, 10, 12, 14, 16, 18, 20]) {
+      await Notifications.scheduleNotificationAsync({
+        content: { title: '💧 Hydration check', body: `Stay ahead of your water goal. Drink up.`, data: { screen: 'Dashboard' } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute: 0 },
+      });
+    }
+  }
+
+  // Sleep wind-down -- back-calculated from target sleep hours (assume 6 AM wake = sleep at 10 PM default)
+  const targetBedHour = Math.max(22 - Math.max(cfg.workSleepHours - 8, 0), 20);
+  await Notifications.scheduleNotificationAsync({
+    content: { title: '🌙 Wind down', body: `Protect your recovery. Sleep = better results.`, data: { screen: 'Progress' } },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: targetBedHour, minute: 0 },
+  });
+
+  // Progress log reminder -- every evening at 8:30 PM
+  await Notifications.scheduleNotificationAsync({
+    content: { title: 'Log todays progress', body: `Capture your weight, energy & mood before the day ends.`, data: { screen: 'Progress' } },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 20, minute: 30 },
+  });
+};
+
+// ----------------------------------------------------------------
+// Boot: apply smart schedule from stored health profile
+// ----------------------------------------------------------------
+export const applySmartScheduleFromProfile = async (profile: {
+  training_start_time: string;
+  training_end_time: string;
+  sleep_hours_target: number;
+  training_days: number[];
+}): Promise<void> => {
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) return;
+
+  await scheduleSmartReminders({
+    workoutStartTime: profile.training_start_time || '07:00',
+    workoutEndTime: profile.training_end_time || '08:30',
+    workSleepHours: profile.sleep_hours_target || 7,
+    mealReminders: true,
+    waterReminders: true,
+    symptomCheckIn: true,
+    trainingDays: profile.training_days || [1, 3, 5],
   });
 };
 

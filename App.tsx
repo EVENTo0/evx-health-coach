@@ -9,6 +9,8 @@ import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
 import { supabase } from './src/services/supabase';
 import { useAppStore } from './src/store';
 import { applyRTL } from './src/i18n';
+import { applySmartScheduleFromProfile } from './src/services/notifications';
+import { supabase as supabaseClient } from './src/services/supabase';
 
 // Parses tokens out of a Supabase auth deep link, whether they arrive
 // as query params (?access_token=...) or a URL fragment (#access_token=...)
@@ -34,6 +36,23 @@ export default function App() {
   // based on the persisted language preference (e.g. Arabic -> RTL).
   useEffect(() => {
     applyRTL(language as 'en' | 'ar');
+  }, []);
+
+  // Apply smart notification schedule whenever user logs in
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { data: profile } = await supabase
+          .from('health_profiles')
+          .select('training_start_time, training_end_time, sleep_hours_target, training_days')
+          .eq('user_id', session.user.id)
+          .single();
+        if (profile) {
+          applySmartScheduleFromProfile(profile).catch(() => null);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleAuthDeepLink = async (url: string | null) => {

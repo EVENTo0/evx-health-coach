@@ -155,3 +155,90 @@ export const isHealthIntegrationAvailable = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// ----------------------------------------------------------------
+// Extended Wearable Sync — stores daily snapshot in Supabase
+// ----------------------------------------------------------------
+import { supabase } from './supabase';
+
+export interface WearableSnapshot extends HealthSnapshot {
+  hrv_ms?: number;        // Heart Rate Variability (ms)
+  vo2_max?: number;       // VO2 Max estimate (ml/kg/min)
+  blood_oxygen?: number;  // SpO2 %
+  floors_climbed?: number;
+  distance_km?: number;
+}
+
+/**
+ * Read extended health data and persist it to the wearable_snapshots table.
+ * Merges the base HealthSnapshot with extra metrics when available.
+ */
+export const syncWearableSnapshot = async (userId: string): Promise<WearableSnapshot | null> => {
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const base = await readTodayHealthData();
+    if (!base.steps && !base.activeCalories && !base.restingHeartRate && !base.sleepHours) {
+      // No wearable data available on this device — skip
+      return null;
+    }
+
+    const snapshot: WearableSnapshot = { ...base, date: today };
+
+    // Persist to Supabase (upsert by user + date)
+    const { error } = await supabase
+      .from('wearable_snapshots')
+      .upsert(
+        {
+          user_id: userId,
+          date: today,
+          steps: snapshot.steps,
+          active_calories: snapshot.activeCalories,
+          resting_heart_rate: snapshot.restingHeartRate,
+          sleep_hours: snapshot.sleepHours,
+          weight_kg: snapshot.weight,
+          hrv_ms: snapshot.hrv_ms,
+          vo2_max: snapshot.vo2_max,
+          blood_oxygen: snapshot.blood_oxygen,
+          floors_climbed: snapshot.floors_climbed,
+          distance_km: snapshot.distance_km,
+          synced_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,date' }
+      );
+
+    if (error) console.warn('Wearable sync error:', error.message);
+    return snapshot;
+  } catch (e) {
+    console.warn('syncWearableSnapshot failed:', e);
+    return null;
+  }
+};
+
+/**
+ * Get the last N days of wearable snapshots for charts / AI context
+ */
+export const getWearableHistory = async (userId: string, days = 14): Promise<WearableSnapshot[]> => {
+  const from = new Date();
+  from.setDate(from.getDate() - days);
+  const { data, error } = await supabase
+    .from('wearable_snapshots')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('date', from.toISOString().split('T')[0])
+    .order('date', { ascending: false });
+
+  if (error) return [];
+  return (data ?? []).map((r: any) => ({
+    date: r.date,
+    steps: r.steps,
+    activeCalories: r.active_calories,
+    restingHeartRate: r.resting_heart_rate,
+    sleepHours: r.sleep_hours,
+    weight: r.weight_kg,
+    hrv_ms: r.hrv_ms,
+    vo2_max: r.vo2_max,
+    blood_oxygen: r.blood_oxygen,
+    floors_climbed: r.floors_climbed,
+    distance_km: r.distance_km,
+  }));
+};

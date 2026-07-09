@@ -10,6 +10,8 @@ import { EVXCard } from '../components/EVXCard';
 import { EVXButton } from '../components/EVXButton';
 import { EVXLoader } from '../components/EVXLoader';
 import type { NutritionPlan, Meal } from '../types';
+import { MacroTracker } from '../components/MacroTracker';
+import { nutritionLogService, type NutritionLog } from '../services/nutritionLog';
 
 interface Props { navigation?: any; }
 
@@ -20,6 +22,7 @@ export const NutritionScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [todayPlan, setTodayPlan] = useState<NutritionPlan | null>(null);
+  const [macroLogs, setMacroLogs] = useState<NutritionLog[]>([]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -28,9 +31,11 @@ export const NutritionScreen: React.FC<Props> = ({ navigation }) => {
       Promise.all([
         nutritionService.list(user.id),
         nutritionService.getByDate(user.id, today),
-      ]).then(([all, today]) => {
+        nutritionLogService.getTodayLogs(user.id, today),
+      ]).then(([all, todayPlan, logs]) => {
         setPlans(all);
-        setTodayPlan(today);
+        setTodayPlan(todayPlan);
+        setMacroLogs(logs);
       }).finally(() => setLoading(false));
     }
   }, []);
@@ -159,6 +164,19 @@ export const NutritionScreen: React.FC<Props> = ({ navigation }) => {
             <MacroBar label="Carbs" value={todayPlan.total_carbs_g} total={todayPlan.total_protein_g + todayPlan.total_carbs_g + todayPlan.total_fat_g} color={colors.accentGreen} />
             <MacroBar label="Fat" value={todayPlan.total_fat_g} total={todayPlan.total_protein_g + todayPlan.total_carbs_g + todayPlan.total_fat_g} color={colors.accent} />
           </EVXCard>
+
+          {/* Macro Tracker */}
+          <MacroTracker
+            userId={user!.id}
+            date={today}
+            targetCalories={todayPlan.total_calories}
+            targetProtein={todayPlan.total_protein_g}
+            targetCarbs={todayPlan.total_carbs_g}
+            targetFat={todayPlan.total_fat_g}
+            targetWater={todayPlan.water_goal_liters}
+            logs={macroLogs}
+            onLogsChange={setMacroLogs}
+          />
 
           {/* Meals */}
           <MealCard meal={todayPlan.breakfast} emoji="🌅" accentColor={colors.warning} />
