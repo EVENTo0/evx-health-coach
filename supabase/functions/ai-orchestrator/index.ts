@@ -195,6 +195,45 @@ Create 10-15 timeline items. Respect work ${profile.work_start_time}–${profile
   );
 }
 
+
+async function progressInsightsWorkflow(profile: Record<string, unknown>, logs: Record<string, unknown>[]): Promise<unknown> {
+  if (!logs.length) {
+    return {
+      headline: "Start logging to unlock insights",
+      summary: "Log your first progress entry to get personalised coaching feedback.",
+      trends: [],
+      recommendations: [],
+      motivation: "Every expert was once a beginner. Log today — your data starts working for you immediately."
+    };
+  }
+
+  const logSummary = logs.slice(0, 14).map(l =>
+    `${l.date}: weight=${l.weight_kg ?? 'N/A'}kg, energy=${l.energy_level ?? 'N/A'}/10, mood=${l.mood ?? 'N/A'}/10, sleep=${l.sleep_hours ?? 'N/A'}h, water=${l.water_intake_liters ?? 'N/A'}L, workout=${l.workout_completed ? 'yes' : 'no'}`
+  ).join('\n');
+
+  return callOpenAI(
+    `You are EVX Coach — a warm, expert wellness coach who turns raw health data into clear, actionable insights.
+Be concise, positive, and specific. Never be generic. Always reference actual numbers from the data.
+Return ONLY valid JSON.`,
+    `${buildContext(profile)}
+
+Recent Progress Logs (newest first):
+${logSummary}
+
+Analyse trends and return JSON:
+{
+  "headline": "2-5 word punchy coaching headline e.g. 'Strong week — push harder'",
+  "summary": "2-3 sentence personalised analysis referencing real numbers from the data",
+  "trends": [
+    {"metric": "weight|energy|mood|sleep|workout_rate", "direction": "up|down|stable", "observation": "specific one-line finding"}
+  ],
+  "recommendations": ["3 specific, actionable recommendations based on the actual data"],
+  "motivation": "One personalized, energising sentence referencing their specific situation"
+}`,
+    1000
+  );
+}
+
 // ----------------------------------------------------------------
 // Main handler
 // ----------------------------------------------------------------
@@ -221,7 +260,13 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { workflow, profile, lab_text, date } = body;
+    const { workflow } = body;
+    // Accept both old shape {profile} and client shape {userContext, input}
+    const profile: Record<string, unknown> = body.profile ?? body.userContext ?? {};
+    const input: Record<string, unknown> = body.input ?? {};
+    const lab_text: string = body.lab_text ?? input.lab_text ?? '';
+    const date: string = body.date ?? input.date ?? new Date().toISOString().split('T')[0];
+    const logs: Record<string, unknown>[] = body.logs ?? input.logs ?? [];
 
     let result: unknown;
 
@@ -237,6 +282,9 @@ serve(async (req: Request) => {
         break;
       case 'daily_plan':
         result = await dailyPlanWorkflow(profile, date);
+        break;
+      case 'progress_insights':
+        result = await progressInsightsWorkflow(profile, logs);
         break;
       default:
         return new Response(

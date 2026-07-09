@@ -124,3 +124,52 @@ export const generateDailyPlan = async (
   );
   return result as Partial<DailyPlan>;
 };
+
+// ----------------------------------------------------------------
+// Progress Insights Workflow (Phase 2)
+// ----------------------------------------------------------------
+export interface ProgressInsight {
+  headline: string;
+  summary: string;
+  trends: { metric: string; direction: 'up' | 'down' | 'stable'; observation: string }[];
+  recommendations: string[];
+  motivation: string;
+}
+
+export const generateProgressInsights = async (
+  profile: HealthProfile,
+  logs: unknown[]
+): Promise<ProgressInsight> => {
+  const result = await callProgressInsightsOrchestrator(
+    {
+      primary_goal: profile.primary_goal,
+      age: profile.age,
+      gender: profile.gender,
+      weight_kg: profile.weight_kg,
+      height_cm: profile.height_cm,
+      activity_level: profile.activity_level,
+      recent_symptoms: 'N/A',
+    },
+    logs
+  );
+  return result as ProgressInsight;
+};
+
+// Internal: progress insights uses a different body shape (passes logs array directly)
+const callProgressInsightsOrchestrator = async (
+  userContext: Record<string, unknown>,
+  logs: unknown[]
+): Promise<unknown> => {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase.functions.invoke('ai-workflow', {
+    body: { workflow: 'progress_insights', userContext, logs },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (error) throw new Error(error.message ?? 'AI request failed');
+  if (data?.error) throw new Error(data.error);
+  return data?.data ?? data;
+};

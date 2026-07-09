@@ -9,6 +9,7 @@ import { EVXCard } from '../components/EVXCard';
 import { EVXButton } from '../components/EVXButton';
 import { EVXLoader } from '../components/EVXLoader';
 import type { ProgressLog } from '../types';
+import { generateProgressInsights, type ProgressInsight } from '../services/ai';
 
 interface Props { navigation?: any; }
 
@@ -29,6 +30,8 @@ export const ProgressScreen: React.FC<Props> = ({ navigation }) => {
   const [mood, setMood] = useState('');
   const [notes, setNotes] = useState('');
   const [workoutDone, setWorkoutDone] = useState(false);
+  const [insight, setInsight] = useState<ProgressInsight | null>(null);
+  const [loadingInsight, setLoadingInsight] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -61,6 +64,19 @@ export const ProgressScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Error', err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGenerateInsights = async () => {
+    if (!healthProfile || !logs.length) return;
+    setLoadingInsight(true);
+    try {
+      const result = await generateProgressInsights(healthProfile, logs);
+      setInsight(result);
+    } catch (err: any) {
+      Alert.alert('Could not generate insights', err.message);
+    } finally {
+      setLoadingInsight(false);
     }
   };
 
@@ -124,13 +140,66 @@ export const ProgressScreen: React.FC<Props> = ({ navigation }) => {
         </Text>
       </View>
 
-      {/* Log button */}
-      <EVXButton
-        title={showForm ? '← Cancel' : '+ Log Today'}
-        onPress={() => setShowForm(!showForm)}
-        variant={showForm ? 'ghost' : 'primary'}
-        style={{ marginBottom: 16 }}
-      />
+      {/* Action buttons */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+        <EVXButton
+          title={showForm ? '← Cancel' : '+ Log Today'}
+          onPress={() => setShowForm(!showForm)}
+          variant={showForm ? 'ghost' : 'primary'}
+          fullWidth={false}
+          style={{ flex: 1 }}
+        />
+        {logs.length > 0 && (
+          <EVXButton
+            title={loadingInsight ? 'Thinking…' : '🧠 AI Insights'}
+            onPress={handleGenerateInsights}
+            variant="secondary"
+            loading={loadingInsight}
+            disabled={loadingInsight}
+            fullWidth={false}
+            style={{ flex: 1 }}
+          />
+        )}
+      </View>
+
+      {/* AI Insights Card */}
+      {insight && (
+        <EVXCard style={{ marginBottom: 20 }} glowColor="#7B61FF">
+          <Text style={{ color: colors.text, fontWeight: '800', fontSize: fontSize.lg, marginBottom: 4 }}>
+            🧠 {insight.headline}
+          </Text>
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm, marginBottom: 14, lineHeight: 20 }}>
+            {insight.summary}
+          </Text>
+
+          {insight.trends.length > 0 && (
+            <View style={{ marginBottom: 14 }}>
+              {insight.trends.map((t, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 8 }}>
+                  <Text>{t.direction === 'up' ? '📈' : t.direction === 'down' ? '📉' : '➡️'}</Text>
+                  <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.sm }}>{t.observation}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>
+            Recommendations
+          </Text>
+          {insight.recommendations.map((r, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 8 }}>
+              <Text style={{ color: '#A3FF6E', fontWeight: '700' }}>{i + 1}.</Text>
+              <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.sm }}>{r}</Text>
+            </View>
+          ))}
+
+          <View style={{ marginTop: 12, padding: 12, backgroundColor: '#7B61FF15', borderRadius: 12 }}>
+            <Text style={{ color: '#7B61FF', fontSize: fontSize.sm, fontStyle: 'italic', lineHeight: 20 }}>
+              "{insight.motivation}"
+            </Text>
+          </View>
+        </EVXCard>
+      )}
 
       {/* Form */}
       {showForm && (
