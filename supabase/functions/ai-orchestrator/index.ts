@@ -67,6 +67,7 @@ User Profile:
 - Work Hours: ${p.work_start_time} – ${p.work_end_time}
 - Training Hours: ${p.training_start_time} – ${p.training_end_time}
 - Sleep Target: ${p.sleep_hours_target} hours
+- Recent Symptoms (last 3 days): ${p.recent_symptoms ?? 'No symptoms reported recently.'}
 `.trim();
 }
 
@@ -94,7 +95,10 @@ async function workoutWorkflow(profile: Record<string, unknown>): Promise<unknow
   return callOpenAI(
     `You are EVX Fit — an expert personal trainer and sports scientist.
 Generate safe, progressive, evidence-based workout plans.
-Always account for health conditions. Return ONLY valid JSON.`,
+Always account for health conditions AND recent reported symptoms — e.g. reduce
+intensity/volume or swap to recovery/mobility work on days with fatigue, poor
+sleep, soreness, or illness-type symptoms. Explicitly note any adjustment made
+because of symptoms in the "notes" field. Return ONLY valid JSON.`,
     `${buildContext(profile)}
 
 Generate a complete workout plan for today. Return JSON:
@@ -121,7 +125,10 @@ async function nutritionWorkflow(profile: Record<string, unknown>): Promise<unkn
   return callOpenAI(
     `You are EVX Nutrition — an expert registered dietitian and sports nutritionist.
 Generate practical, balanced, culturally-aware meal plans.
-Use real, accessible foods with specific portions. Return ONLY valid JSON.`,
+Use real, accessible foods with specific portions. Adjust for recent reported
+symptoms — e.g. more hydration/electrolytes and easily-digestible foods for
+nausea/bloating, extra iron/protein-rich foods for fatigue. Mention any
+symptom-driven adjustment in the "notes" field. Return ONLY valid JSON.`,
     `${buildContext(profile)}
 
 TDEE: ~${tdee} kcal | Target: ~${target} kcal

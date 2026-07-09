@@ -9,8 +9,10 @@ import { EVXCard } from '../components/EVXCard';
 import { EVXLoader } from '../components/EVXLoader';
 import { StatRing } from '../components/StatRing';
 import { StreakCard } from '../components/StreakCard';
+import { SymptomCheckIn } from '../components/SymptomCheckIn';
 import { readTodayHealthData, isHealthIntegrationAvailable, type HealthSnapshot } from '../services/health';
 import { getStreakData, type StreakData } from '../services/streaks';
+import { getTodaySymptoms, logSymptoms, type SymptomLog } from '../services/symptoms';
 import { supabase } from '../services/supabase';
 
 interface DashboardState {
@@ -19,6 +21,7 @@ interface DashboardState {
   todayWorkout: boolean;
   todayMeal: boolean;
   todayPlan: boolean;
+  todaySymptoms: SymptomLog | null;
 }
 
 export const DashboardScreen: React.FC = () => {
@@ -34,13 +37,14 @@ export const DashboardScreen: React.FC = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      const [health, available, streakRes, workoutRes, mealRes, planRes] = await Promise.allSettled([
+      const [health, available, streakRes, workoutRes, mealRes, planRes, symptomRes] = await Promise.allSettled([
         readTodayHealthData(),
         isHealthIntegrationAvailable(),
         getStreakData(user.id),
         supabase.from('workouts').select('id').eq('user_id', user.id).gte('created_at', today).limit(1),
         supabase.from('meal_plans').select('id').eq('user_id', user.id).gte('created_at', today).limit(1),
         supabase.from('daily_plans').select('id').eq('user_id', user.id).eq('date', today).limit(1),
+        getTodaySymptoms(user.id),
       ]);
 
       setHealthAvailable(available.status === 'fulfilled' ? available.value : false);
@@ -51,6 +55,7 @@ export const DashboardScreen: React.FC = () => {
         todayWorkout: workoutRes.status === 'fulfilled' ? (workoutRes.value.data?.length ?? 0) > 0 : false,
         todayMeal: mealRes.status === 'fulfilled' ? (mealRes.value.data?.length ?? 0) > 0 : false,
         todayPlan: planRes.status === 'fulfilled' ? (planRes.value.data?.length ?? 0) > 0 : false,
+        todaySymptoms: symptomRes.status === 'fulfilled' ? symptomRes.value : null,
       });
     } catch (e) {
       console.error('Dashboard load error:', e);
@@ -66,6 +71,12 @@ export const DashboardScreen: React.FC = () => {
     setRefreshing(true);
     loadDashboard();
   }, [loadDashboard]);
+
+  const handleSymptomSubmit = useCallback(async (symptoms: string[], energyLevel: number) => {
+    if (!user) return;
+    const log = await logSymptoms(user.id, { symptoms, energy_level: energyLevel });
+    setData((prev) => (prev ? { ...prev, todaySymptoms: log } : prev));
+  }, [user]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -115,6 +126,8 @@ export const DashboardScreen: React.FC = () => {
       </View>
 
       <StreakCard streak={data?.streakData ?? { current_streak: 0, longest_streak: 0, last_active_date: null, total_active_days: 0, xp_total: 0, level: 1, badges: [] }} />
+
+      <SymptomCheckIn onSubmit={handleSymptomSubmit} alreadyLoggedToday={!!data?.todaySymptoms} />
 
       {healthAvailable && data?.health && (
         <View style={styles.section}>

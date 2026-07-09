@@ -182,3 +182,15 @@ export interface AppState {
   isLoading: boolean;
   error: string | null;
 }
+
+// ===== SYMPTOM TRACKING =====
+export interface SymptomLog {
+  id: string;
+  user_id: string;
+  date: string;
+  symptoms: string[];
+  severity: number | null;
+  energy_level: number | null;
+  notes: string | null;
+  created_at: string;
+}

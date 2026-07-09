@@ -9,6 +9,7 @@
  */
 
 import { supabase } from './supabase';
+import { getRecentSymptoms, summarizeSymptomsForAI } from './symptoms';
 import type { HealthProfile, WorkoutPlan, NutritionPlan, LabAnalysis, DailyPlan } from '../types';
 
 // ----------------------------------------------------------------
@@ -40,6 +41,8 @@ export const generateWorkout = async (
   profile: HealthProfile,
   options?: { duration_minutes?: number; type?: string }
 ): Promise<Partial<WorkoutPlan>> => {
+  const recentSymptoms = await getRecentSymptoms(profile.user_id, 3).catch(() => []);
+
   const result = await callAIOrchestrator(
     'workout',
     {
@@ -47,6 +50,7 @@ export const generateWorkout = async (
       fitness_level: profile.fitness_level,
       equipment: profile.equipment,
       health_conditions: profile.health_conditions ?? [],
+      recent_symptoms: summarizeSymptomsForAI(recentSymptoms),
     },
     {
       duration_minutes: options?.duration_minutes ?? 60,
@@ -60,6 +64,8 @@ export const generateWorkout = async (
 // Nutrition Workflow
 // ----------------------------------------------------------------
 export const generateMealPlan = async (profile: HealthProfile): Promise<Partial<NutritionPlan>> => {
+  const recentSymptoms = await getRecentSymptoms(profile.user_id, 3).catch(() => []);
+
   const result = await callAIOrchestrator(
     'nutrition',
     {
@@ -69,6 +75,7 @@ export const generateMealPlan = async (profile: HealthProfile): Promise<Partial<
       activity_level: profile.activity_level,
       food_preferences: profile.food_preferences ?? [],
       food_restrictions: profile.food_restrictions ?? [],
+      recent_symptoms: summarizeSymptomsForAI(recentSymptoms),
     },
     {}
   );
