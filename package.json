@@ -38,6 +38,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "ci:boundary": "node scripts/verify-ci-boundary.mjs",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
