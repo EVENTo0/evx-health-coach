@@ -1,7 +1,17 @@
 # EVX – AI Health, Fitness & Nutrition Coach
 ## Autonomous Build Agent — Project Status
 
-### Current Phase: MVP (Phase 1) — READY FOR DEPLOYMENT
+### Current Phase: MVP source verification — NOT RELEASED
+
+### 2026-09-29 acceptance checkpoint
+
+- Root TypeScript and the admin production bundle passed locally after clean lockfile installs on Node 24.19.0. The PR now has a dedicated source-verification workflow; its result must be checked on the current commit.
+- Verification uses no hosted credentials, EAS, database writes, deployed functions, or live AI calls. The existing main/manual EAS production workflow is outside this gate.
+- Runtime environment files are removed from the candidate head and ignored going forward. Source CI also excludes generated dependencies, backup copies, and agent runtime configuration. Git history is not rewritten.
+- The unused client-public OpenAI API-key configuration was removed. Real provider credentials belong only in the server-side runtime.
+- Historical implementation checklists below are an inventory, not evidence of clinical safety, hosted RLS, device compatibility, API target compliance, or release readiness.
+- Final activation still requires authenticated hosted privacy/RLS proof, qualified review of health/AI behavior, physical-device checks, and approved store/privacy configuration. Clinical correctness is UNVERIFIED.
+- Evidence and limits: `docs/ci-acceptance-20260929.md`.
 
 ---
 
@@ -40,7 +50,7 @@
 
 ---
 
-## 🔲 Next: Deployment Execution
+## 🔲 Final Activation: After Acceptance Evidence and Owner Review
 
 Run these in order:
 
@@ -93,5 +103,5 @@ Run these in order:
 | Zustand over Redux | Simpler, TypeScript-native, no boilerplate |
 | Bottom tabs (7) | All features accessible in max 2 taps |
 | JSON persisted workouts | Flexible schema, no migrations for exercise changes |
-| RLS everywhere | Users physically cannot read others' data |
+| RLS everywhere | Intended isolation; authenticated hosted negative tests are still required |
 | Lab analysis = educational only | Legal/liability — never diagnose |

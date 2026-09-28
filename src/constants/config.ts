@@ -10,7 +10,7 @@ export const APP_CONFIG = {
 // API Config — replace with real values via .env
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-export const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || '';
+// AI credentials belong only in the server-side Edge Function environment.
 
 // Health defaults
 export const HEALTH_DEFAULTS = {

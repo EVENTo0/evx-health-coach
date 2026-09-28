@@ -1,4 +1,4 @@
-name: PR source verification
+name: EVX health source verification
 
 on:
   pull_request:
@@ -7,17 +7,51 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: evx-health-verify-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  typecheck:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      CI: '1'
+      EXPO_NO_DOTENV: '1'
+      EXPO_NO_TELEMETRY: '1'
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out source without runtime environments or generated copies
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.env*
+            !/admin/.env*
+            !/.agents/
+            !/.claude/
+            !/.expo/
+            !/node_modules/
+            !/evx/
+            !/android/
+            !/dist/
+            !/incoming_files/
+            !/*.zip
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
-          package-manager-cache: false
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run type-check
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            admin/package-lock.json
+      - name: Check CI and client credential boundaries
+        run: npm run ci:boundary
+      - name: Install mobile dependencies from lockfile without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Typecheck mobile source
+        run: npm run type-check
+      - name: Install admin dependencies from lockfile without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund --prefix admin
+      - name: Compile admin without hosted credentials
+        run: npm run build --prefix admin

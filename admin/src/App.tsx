@@ -636,10 +636,9 @@ export function App() {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:16, background:C.bg }}>
         <div style={{ fontSize:40 }}>⚙️</div>
-        <div style={{ fontSize:18, fontWeight:700, color:C.text }}>Missing .env config</div>
+        <div style={{ fontSize:18, fontWeight:700, color:C.text }}>Admin setup is pending</div>
         <div style={{ fontSize:13, color:C.dim, fontFamily:'monospace', textAlign:'center', lineHeight:2 }}>
-          VITE_SUPABASE_URL=https://rwisnjzibfpaasmlsmmg.supabase.co<br/>
-          VITE_SUPABASE_SERVICE_KEY=your_service_role_key
+          Configure the approved Supabase project with its public key before signing in.
         </div>
       </div>
     );
